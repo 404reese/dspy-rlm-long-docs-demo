@@ -1,6 +1,6 @@
 # DSPy RLM: Recursive Language Model for Document Extraction
 
-A practical demonstration of **DSPy RLM (Recursive Language Model)** for extracting structured information from large, complex documents using Python and Azure OpenAI.
+A practical demonstration of **DSPy RLM (Recursive Language Model)** for extracting structured information from large, complex documents using Python and Google Gemini models.
 
 This project showcases how RLM can intelligently search and reason over full documents without pre-chunking, using its built-in Python REPL to iteratively locate and extract information.
 
@@ -22,7 +22,7 @@ flowchart TD
     A([Full Document]) --> B["Main LM\nDecides strategy"]
     B --> C[Writes Python code]
     C --> D["Deno WASM REPL\nExecutes code"]
-    D -- "code calls llm_query(snippet)" --> F["Sub-LM gpt-4o-mini\nReads snippet, returns value"]
+    D -- "code calls llm_query(snippet)" --> F["Sub-LM gemini-2.5-flash\nReads snippet, returns value"]
     F -- "return value back\ninto REPL as Python string" --> D
     D -- "Full REPL output\n(incl. any llm_query results)" --> B
     B -- "Not done — refine search" --> C
@@ -40,7 +40,7 @@ flowchart TD
 - Verbose RLM trajectory tracking (see exactly what reasoning steps the model took)
 - Extraction results saved as structured JSON in `outputs/`
 - Two PDF-to-Markdown converters included (fast and ML-quality)
-- Full Azure OpenAI integration with environment-based configuration
+- Full Google Gemini integration with environment-based configuration
 
 ---
 
@@ -79,22 +79,20 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Configure Azure OpenAI
+### 4. Configure Google Gemini
 
 Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your Azure OpenAI credentials:
+Edit `.env` and fill in your Google Gemini credentials:
 ```
-AZURE_OPENAI_DEPLOYMENT=your_deployment_name
-AZURE_OPENAI_API_KEY=your_api_key_here
-AZURE_OPENAI_ENDPOINT=https://your_resource_name.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-10-21
+GEMINI_API_KEY=your_api_key_here
 
-# Optional: Use a cheaper model for sub-LM (semantic extraction)
-AZURE_OPENAI_SUB_LM_DEPLOYMENT=gpt-4o-mini
+# Optional: Specify models (defaults to gemini-2.5-pro and gemini-2.5-flash)
+# GEMINI_MODEL=gemini-2.5-pro
+# GEMINI_SUB_LM_MODEL=gemini-2.5-flash
 ```
 
 ### 5. Prepare Your Document
@@ -141,7 +139,7 @@ python program.py
 ├── program.py                        # Entry point — RLM call and result logging
 ├── rlm/
 │   ├── signature.py                  # DSPy Signature: defines fields to extract
-│   ├── lm_config.py                  # Azure OpenAI LM factory (main + sub-LM)
+│   ├── lm_config.py                  # Google Gemini LM factory (main + sub-LM)
 │   └── extractor.py                  # Wires up dspy.RLM and runs extraction
 ├── utils/
 │   ├── logging_setup.py              # Console + file logging, RLM stdout bridge
@@ -163,11 +161,11 @@ graph TD
     entry(["program.py\nEntry Point"])
     extractor["rlm/extractor.py\ndspy.RLM orchestration"]
     sig["rlm/signature.py\nDSPy Signature"]
-    lmconfig["rlm/lm_config.py\nAzure OpenAI LM factory"]
+    lmconfig["rlm/lm_config.py\nGoogle Gemini LM factory"]
     interp["utils/interpreter.py\nDeno interpreter"]
     logsetup["utils/logging_setup.py\nLogging + stdout bridge"]
     io["utils/io_utils.py\nDocument reader + JSON writer"]
-    azure[(Azure OpenAI API)]
+    gemini[(Google Gemini API)]
     deno[(Deno WASM REPL)]
 
     entry --> extractor
@@ -176,7 +174,7 @@ graph TD
     extractor --> sig
     extractor --> lmconfig
     extractor --> interp
-    lmconfig --> azure
+    lmconfig --> gemini
     interp --> deno
 ```
 
@@ -208,13 +206,13 @@ Then update the logging block in [program.py](program.py) `main()` to print your
 The **main LM** drives the overall extraction strategy (deciding what to search for, what code to run).  
 The **sub-LM** handles semantic queries inside the REPL loop (extracting specific values from snippets already found).
 
-Using a cheaper model for sub-LM (e.g., `gpt-4o-mini`) significantly reduces costs on large documents without sacrificing quality.
+Using a cheaper model for sub-LM (e.g., `gemini-2.5-flash`) significantly reduces costs on large documents without sacrificing quality.
 
 ```mermaid
 flowchart LR
-    doc([Document]) --> main["Main LM\ngpt-4o\nStrategy + code"]
+    doc([Document]) --> main["Main LM\ngemini-2.5-pro\nStrategy + code"]
     main -->|"Python code"| repl["Deno REPL\nExecutes code"]
-    repl -->|"calls llm_query(snippet)\nfrom inside Python code"| sub["Sub-LM\ngpt-4o-mini\nReads snippet"]
+    repl -->|"calls llm_query(snippet)\nfrom inside Python code"| sub["Sub-LM\ngemini-2.5-flash\nReads snippet"]
     sub -->|"return value\n(plain string)"| repl
     repl -->|"Full REPL output\nback to Main LM"| main
     main -->|"all fields resolved"| out([JSON Output])
@@ -279,7 +277,7 @@ Each run writes `outputs/result_YYYYMMDD_HHMMSS.json`:
 ## Requirements
 
 - Python 3.8+
-- Azure OpenAI access (API key + deployment)
+- Google Gemini API access (API key)
 - Deno installed (for REPL execution)
   - On Windows: `winget install denoland.deno` or visit [deno.land](https://deno.land)
   - On macOS: `brew install deno`
@@ -313,22 +311,17 @@ Install the PDF converter dependencies:
 pip install pymupdf4llm docling
 ```
 
-### Azure OpenAI errors
+### Gemini API errors
 Check your `.env` file:
-- Verify `AZURE_OPENAI_ENDPOINT` includes the trailing slash
-- Confirm `AZURE_OPENAI_DEPLOYMENT` matches your actual deployment name
-- Test credentials with Azure CLI:
-  ```bash
-  az login
-  az account show
-  ```
+- Verify `GEMINI_API_KEY` is correctly set and active.
+- Ensure you have a stable internet connection to Google AI Studio APIs.
 
 ---
 
 ## Learning Resources
 
 - **DSPy Documentation**: https://github.com/stanfordnlp/dspy
-- **Azure OpenAI**: https://azure.microsoft.com/en-us/products/openai/
+- **Google AI Studio**: https://aistudio.google.com/
 - **Deno Documentation**: https://docs.deno.com/
 
 ---

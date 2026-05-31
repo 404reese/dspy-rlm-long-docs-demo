@@ -1,4 +1,4 @@
-"""Azure OpenAI LM factory functions for DSPy."""
+"""Google Gemini LM factory functions for DSPy."""
 
 from __future__ import annotations
 
@@ -9,11 +9,14 @@ import dspy
 
 def configure_lm() -> dspy.LM:
     """Create and register the main orchestration LM (set as DSPy default)."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY environment variable is not set.")
+
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-pro")
     lm = dspy.LM(
-        f"azure/{os.environ['AZURE_OPENAI_DEPLOYMENT']}",
-        api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_base=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+        f"gemini/{model_name}",
+        api_key=api_key,
         cache=False,
     )
     dspy.configure(lm=lm)
@@ -23,17 +26,15 @@ def configure_lm() -> dspy.LM:
 def configure_sub_lm() -> dspy.LM:
     """Create the sub-LM used for cheap repetitive extractions inside the REPL loop.
 
-    Uses AZURE_OPENAI_SUB_LM_DEPLOYMENT if set; falls back to the main deployment.
-    All other credentials are shared with the main LM.
+    Uses GEMINI_SUB_LM_MODEL if set; falls back to gemini-2.5-flash.
     """
-    sub_deployment = os.environ.get(
-        "AZURE_OPENAI_SUB_LM_DEPLOYMENT",
-        os.environ["AZURE_OPENAI_DEPLOYMENT"],
-    )
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY environment variable is not set.")
+
+    model_name = os.environ.get("GEMINI_SUB_LM_MODEL", "gemini-2.5-flash")
     return dspy.LM(
-        f"azure/{sub_deployment}",
-        api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_base=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+        f"gemini/{model_name}",
+        api_key=api_key,
         cache=False,
     )
